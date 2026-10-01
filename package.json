@@ -1,0 +1,25 @@
+{
+  "name": "crash-proof-portfolio",
+  "type": "module",
+  "version": "1.0.0",
+  "private": true,
+  "description": "100% static portfolio — zero server-side execution, crash-proof on Cloudflare Pages free tier",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^7.3.5"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@astrojs/sitemap": "^3.7.4",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,158 @@
+---
+// src/components/GitHubProjects.astro
+//
+// Client-side island: the VISITOR's browser calls the GitHub public API with
+// THEIR IP (60 req/hour limit — plenty for a portfolio). Our host does nothing.
+//
+// Hardening built in:
+//  • sessionStorage cache (10 min TTL) → repeat views cost zero API calls
+//  • graceful fallback UI on rate-limit (HTTP 403), offline, or adblock
+//  • skeleton placeholders while loading (no layout jump)
+//
+// Usage: <GitHubProjects username="your-username" />
+// Optionally: featured="repo-a,repo-b" pins those repos first.
+import { GITHUB_USERNAME } from '../config';
+
+interface Props {
+  username?: string;
+  count?: number;
+  featured?: string[];
+}
+
+const { username = GITHUB_USERNAME, count = 6, featured = [] } = Astro.props;
+---
+
+<div
+  id="gh-projects"
+  class="grid"
+  data-username={username}
+  data-count={String(count)}
+  data-featured={featured.join(',')}
+>
+  <p class="island-status skeleton">Loading projects from GitHub…</p>
+</div>
+
+<script>
+  interface Repo {
+    id: number;
+    name: string;
+    description: string | null;
+    html_url: string;
+    homepage: string | null;
+    stargazers_count: number;
+    fork: boolean;
+    archived: boolean;
+    pushed_at: string;
+  }
+
+  const CACHE_KEY = 'gh-projects-cache';
+  const TTL_MS = 10 * 60 * 1000; // 10 minutes
+
+  const root = document.getElementById('gh-projects');
+  if (root) {
+    const username = root.dataset.username ?? '';
+    const count = Number(root.dataset.count ?? 6);
+    const featured = (root.dataset.featured ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    render(await loadRepos(username, featured, count));
+  }
+
+  async function loadRepos(
+    username: string,
+    featured: string[],
+    count: number,
+  ): Promise<{ repos: Repo[]; stale: boolean } | { error: string }> {
+    // 1. Cache first — instant paint, zero API usage on repeat visits.
+    try {
+      const raw = sessionStorage.getItem(CACHE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { t: number; repos: Repo[] };
+        if (Date.now() - parsed.t < TTL_MS && parsed.repos?.length) {
+          return { repos: pick(parsed.repos, featured, count), stale: false };
+        }
+      }
+    } catch {
+      /* corrupted cache — ignore and refetch */
+    }
+
+    // 2. Fetch from the visitor's browser.
+    try {
+      const res = await fetch(
+        `https://api.github.com/users/${encodeURIComponent(username)}/repos?sort=updated&per_page=100`,
+        { headers: { Accept: 'application/vnd.github+json' } },
+      );
+
+      if (res.status === 403 || res.status === 429) {
+        return {
+          error:
+            'GitHub rate limit reached for this network. Please browse my repos directly on GitHub.',
+        };
+      }
+      if (!res.ok) throw new Error(`GitHub API error ${res.status}`);
+
+      const all = (await res.json()) as Repo[];
+      const mine = all.filter((r) => !r.fork && !r.archived);
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), repos: mine }));
+      } catch {
+        /* storage full/blocked — non-fatal */
+      }
+      return { repos: pick(mine, featured, count), stale: false };
+    } catch {
+      // Ad blockers, offline, or API hiccup → static fallback, never a crash.
+      return { error: 'Could not load live projects right now.' };
+    }
+  }
+
+  function pick(repos: Repo[], featured: string[], count: number): Repo[] {
+    const byName = new Map(repos.map((r) => [r.name, r]));
+    const pinned = featured.map((n) => byName.get(n)).filter((r): r is Repo => Boolean(r));
+    const rest = repos
+      .filter((r) => !featured.includes(r.name))
+      .sort((a, b) => b.stargazers_count - a.stargazers_count || b.pushed_at.localeCompare(a.pushed_at));
+    return [...pinned, ...rest].slice(0, count);
+  }
+
+  function render(result: { repos: Repo[] } | { error: string }): void {
+    if (!root) return;
+
+    if ('error' in result) {
+      root.innerHTML = `
+        <p class="island-status">
+          ${result.error}
+          <a href="https://github.com/${root.dataset.username}" rel="noopener">Visit my GitHub →</a>
+        </p>`;
+      return;
+    }
+
+    if (result.repos.length === 0) {
+      root.innerHTML = '<p class="island-status">No public repositories yet — check back soon!</p>';
+      return;
+    }
+
+    root.innerHTML = result.repos
+      .map(
+        (r) => `
+        <article class="card">
+          <h3><a href="${r.html_url}" rel="noopener">${escapeHtml(r.name)}</a></h3>
+          <p>${escapeHtml(r.description ?? 'No description yet.')}</p>
+          <div class="meta">
+            <span class="repo-stars">★ ${r.stargazers_count.toLocaleString('en-US')}</span>
+            ${r.homepage ? `<a href="${r.homepage}" rel="noopener">Live demo →</a>` : ''}
+          </div>
+        </article>`,
+      )
+      .join('');
+  }
+
+  function escapeHtml(s: string): string {
+    return s
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;');
+  }
+</script>

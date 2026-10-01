@@ -1,0 +1,33 @@
+---
+// src/components/ProjectCard.astro — renders one project. No JS, no fetching.
+interface Props {
+  title: string;
+  description: string;
+  url?: string;
+  repo?: string;
+  tags?: string[];
+  stars?: number;
+}
+
+const { title, description, url, repo, tags = [], stars } = Astro.props;
+const href = url || repo || '#';
+---
+
+<article class="card project-card">
+  <h3>
+    {href !== '#'
+      ? <a href={href} rel="noopener">{title}</a>
+      : title}
+  </h3>
+  <p>{description}</p>
+  {tags.length > 0 && (
+    <ul class="tags" role="list">
+      {tags.map((t) => <li class="tag">{t}</li>)}
+    </ul>
+  )}
+  <div class="meta">
+    {stars !== undefined && <span class="repo-stars">★ {stars.toLocaleString('en-US')}</span>}
+    {url && <a href={url} rel="noopener">Live demo →</a>}
+    {repo && <a href={repo} rel="noopener">Source →</a>}
+  </div>
+</article>

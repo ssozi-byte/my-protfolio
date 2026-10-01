@@ -1,0 +1,32 @@
+---
+// src/pages/about.astro — static about page.
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ContactForm from '../components/ContactForm.astro';
+---
+
+<BaseLayout title="About" description="Who I am, what I build, and how to reach me.">
+  <article class="prose">
+    <h1>About me</h1>
+    <p>
+      I'm a software engineer who cares about performance, reliability, and
+      shipping things that don't fall over. I like static-first architectures,
+      boring-in-a-good-way infrastructure, and tools that get out of the way.
+    </p>
+    <p>
+      This portfolio is a deliberate exercise in that philosophy: it's a fully
+      static site with <strong>zero server-side execution</strong> — no functions,
+      no workers, no request limits. Contact runs through Formspree, comments
+      would run through Giscus, and analytics is Cloudflare Web Analytics.
+    </p>
+
+    <h2>What I'm good at</h2>
+    <ul>
+      <li>TypeScript, React, and the modern web platform</li>
+      <li>Static site architecture & edge-safe design</li>
+      <li>Developer tooling and CI/CD pipelines</li>
+    </ul>
+
+    <h2>Get in touch</h2>
+    <ContactForm />
+  </article>
+</BaseLayout>

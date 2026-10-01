@@ -1,0 +1,15 @@
+---
+// src/components/Footer.astro — static links only.
+import { SITE, SOCIAL } from '../config';
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <div class="inner">
+    <span>© {year} {SITE.author} · Built as a 100% static site</span>
+    <nav aria-label="Social">
+      {SOCIAL.map((s) => <a href={s.href} rel="me noopener">{s.label}</a>)}
+    </nav>
+  </div>
+</footer>
